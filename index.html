@@ -1,15 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Room</title>
+    <title>Private Chat Room</title>
     <style>
         #chatSection {
             display: none;
         }
     </style>
 </head>
+
 <body>
     <div id="homeScreen">
         <h1>Welcome to the Home Page</h1>
@@ -35,9 +37,9 @@
         <button onclick="showHome()">Back to Home</button>
         <p id="signupMessage"></p>
     </div>
-
     <div id="chatSection">
-        <h1>Chat Room</h1>
+        <h1>Private Chat Room</h1>
+        <select id="recipientSelect" onchange="selectRecipient()"></select>
         <div id="chatMessages"></div>
         <input type="text" id="messageInput" placeholder="Type your message...">
         <button onclick="sendMessage()">Send</button>
@@ -45,51 +47,80 @@
     </div>
 
     <script>
-        // Initialize registeredUsers from localStorage or an empty object
-        let registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || {};
+        let currentUser = null;
+        let selectedRecipient = null;
+        let registeredUsers = {};
 
-        let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+        // Load chat history from localStorage
+        registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || {};
+
+
+	function selectRecipient() {
+            selectedRecipient = document.getElementById("recipientSelect").value;
+            displayChatHistory();
+        }
+
+        // Function to send a message
+        function sendMessage() {
+            const messageInput = document.getElementById("messageInput");
+            const message = messageInput.value;
+
+            if (message && selectedRecipient && registeredUsers[selectedRecipient]) {
+                if (!registeredUsers[selectedRecipient].messages) {
+                    registeredUsers[selectedRecipient].messages = [];
+                }
+
+                registeredUsers[selectedRecipient].messages.push({
+                    sender: currentUser,
+                    message: message
+                });
+
+                // Save chat history to localStorage
+                localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+
+                displayChatHistory();
+                messageInput.value = "";
+            }
+        }
+
+        // Function to display chat history
+        function displayChatHistory() {
+            const chatMessages = document.getElementById("chatMessages");
+            chatMessages.innerHTML = "";
+
+            if (registeredUsers[selectedRecipient] && registeredUsers[selectedRecipient].messages) {
+                registeredUsers[selectedRecipient].messages.forEach(messageObj => {
+                    const messageElement = document.createElement("p");
+                    messageElement.textContent = `${messageObj.sender}: ${messageObj.message}`;
+                    chatMessages.appendChild(messageElement);
+                });
+            }
+        }
+
+        function populateRecipientSelect() {
+            const recipientSelect = document.getElementById("recipientSelect");
+            recipientSelect.innerHTML = "";
+
+            // Populate the dropdown with usernames of registered users
+            for (const username in registeredUsers) {
+                if (username !== currentUser) {
+                    const option = document.createElement("option");
+                    option.value = username;
+                    option.textContent = username;
+                    recipientSelect.appendChild(option);
+                }
+            }
+        }
 
         function showChat() {
             document.getElementById("homeScreen").style.display = "none";
             document.getElementById("loginSection").style.display = "none";
             document.getElementById("signupSection").style.display = "none";
             document.getElementById("chatSection").style.display = "block";
+            populateRecipientSelect();
             displayChatHistory();
         }
-
-        function sendMessage() {
-            const messageInput = document.getElementById("messageInput");
-            const message = messageInput.value;
-
-            if (message) {
-                // Add the message to the chat history
-                chatHistory.push(message);
-                // Save the updated chat history to localStorage
-                localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-
-                // Clear the input field after sending the message
-                messageInput.value = "";
-
-                // Update the chat interface to display the updated chat history
-                displayChatHistory();
-            }
-        }
-
-        function displayChatHistory() {
-            const chatMessages = document.getElementById("chatMessages");
-            // Clear existing messages
-            chatMessages.innerHTML = "";
-            
-            // Display chat history in the chat interface
-            chatHistory.forEach(message => {
-                const messageElement = document.createElement("p");
-                messageElement.textContent = message;
-                chatMessages.appendChild(messageElement);
-            });
-        }
-
-        function showSignup() {
+function showSignup() {
             document.getElementById("homeScreen").style.display = "none";
             document.getElementById("loginSection").style.display = "none";
             document.getElementById("chatSection").style.display = "none";
@@ -134,28 +165,45 @@
             showChat();
         }
 
-        function signup() {
-            const username = document.getElementById("signupUsernameInput").value;
-            const password = document.getElementById("signupPasswordInput").value;
+	function signup() {
+    		const username = document.getElementById("signupUsernameInput").value;
+    		const password = document.getElementById("signupPasswordInput").value;
+    		const signupMessage = document.getElementById("signupMessage");
 
-            // Check for empty fields
-            if (!username || !password) {
-                document.getElementById("signupMessage").textContent = "Please enter both username and password.";
-                return;
-            }
+    		// Reset signup message
+    		signupMessage.textContent = "";
 
-            if (registeredUsers[username]) {
-                document.getElementById("signupMessage").textContent = `Username '${username}' has already been taken. Try again`;
-                return;
-            }
+    		// Check for empty fields
+    		if (!username || !password) {
+        		signupMessage.textContent = "Please enter both username and password.";
+        		return;
+   		}
 
-            const now = new Date().toLocaleString();
-            registeredUsers[username] = { password, signupTime: now };
+    		if (registeredUsers[username]) {
+        		signupMessage.textContent = `Username '${username}' has already been taken. Try again`;
+        		return;
+    		}
 
-            localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+    		// Store the new user in registeredUsers
+    		registeredUsers[username] = { password: password, messages: [] };
 
-            showChat();
+    		// Save the updated registeredUsers to localStorge
+    		localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+
+    		showChat();
+	}
+        function initChat() {
+            // Set current user (you might retrieve this from user authentication)
+            currentUser = "YourUsername";
+
+            // Populate recipient dropdown and display initial chat history
+            populateRecipientSelect();
+            selectRecipient();
         }
+
+        // Call the initChat function when the page loads
+        window.onload = initChat;
     </script>
 </body>
+
 </html>
